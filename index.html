@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magnets Laboratory 3D - Full Science Suite</title>
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js for 3D graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            touch-action: none; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        /* Strict 16:9 Container */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: calc(100vh * 16 / 9);
+            max-height: calc(100vw * 9 / 16);
+            background-color: #1a202c;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: none; }
+        .interactive-ui { pointer-events: auto; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 3px; }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+        }
+
+        .menu-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: all 0.2s;
+        }
+        .menu-btn:hover { transform: scale(1.02); filter: brightness(1.1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+        
+        #modal-overlay {
+            display: none;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+            z-index: 50; justify-content: center; align-items: center; pointer-events: auto;
+        }
+
+        .tutorial-highlight {
+            border: 2px solid #60a5fa;
+            box-shadow: 0 0 15px rgba(96, 165, 250, 0.5);
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(96, 165, 250, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+        }
+
+        /* Mode 3 Sliders */
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #3b82f6; cursor: pointer; margin-top: -4px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: #4b5563; border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="game-container">
+        <!-- 3D Canvas -->
+        <div id="canvas-container"></div>
+
+        <!-- MAIN MENU -->
+        <div id="ui-main-menu" class="ui-layer" style="display: flex; flex-direction: column; justify-content: center; align-items: center;">
+            <div class="glass-panel p-8 rounded-3xl interactive-ui text-center max-w-2xl w-[90%] border-t border-blue-400/30">
+                <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 mb-2 drop-shadow-lg">
+                    Magnets Laboratory 3D
+                </h1>
+                <p class="text-gray-300 mb-8 text-lg">Select a simulation mode to begin your experiment.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <button onclick="setGameMode('MODE1')" class="menu-btn p-4 rounded-xl flex flex-col items-center gap-3">
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-lg">Characteristics Lab</h3>
+                        <p class="text-xs text-blue-100 opacity-80">4 interactive stations exploring attraction, fields, and materials.</p>
+                    </button>
+                    
+                    <button onclick="setGameMode('MODE2')" class="menu-btn p-4 rounded-xl flex flex-col items-center gap-3" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-lg">Magnetic Mazes</h3>
+                        <p class="text-xs text-green-100 opacity-80">10 levels of challenging puzzles using magnetic forces.</p>
+                    </button>
+
+                    <button onclick="setGameMode('MODE3')" class="menu-btn p-4 rounded-xl flex flex-col items-center gap-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3 class="font-bold text-lg">Electromagnets</h3>
+                        <p class="text-xs text-yellow-100 opacity-80">Build an electromagnet and simulate electric induction!</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GLOBAL BACK BUTTON -->
+        <div id="btn-back" class="absolute top-4 left-4 z-50 interactive-ui hidden">
+            <button onclick="setGameMode('MENU')" class="glass-panel p-2 px-4 rounded-xl font-bold text-sm flex items-center hover:bg-white/10 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Main Menu
+            </button>
+        </div>
+
+        <!-- MODE 1 UI: Characteristics Lab -->
+        <div id="ui-mode1" class="ui-layer">
+            <div id="m1-labels-container" class="absolute inset-0 pointer-events-none z-0"></div>
+            
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 glass-panel px-4 py-2 rounded-xl interactive-ui grid grid-cols-2 gap-2 z-10 w-max">
+                <button onclick="m1_loadTask(1)" class="px-3 py-1.5 bg-blue-600 rounded hover:bg-blue-500 text-sm font-bold w-full">Task 1: Attract/Repel</button>
+                <button onclick="m1_loadTask(2)" class="px-3 py-1.5 bg-blue-600 rounded hover:bg-blue-500 text-sm font-bold w-full">Task 2: Fields</button>
+                <button onclick="m1_loadTask(3)" class="px-3 py-1.5 bg-blue-600 rounded hover:bg-blue-500 text-sm font-bold w-full">Task 3: Force</button>
+                <button onclick="m1_loadTask(4)" class="px-3 py-1.5 bg-blue-600 rounded hover:bg-blue-500 text-sm font-bold w-full">Task 4: Materials</button>
+            </div>
+            
+            <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 glass-panel p-4 rounded-xl interactive-ui text-center max-w-lg z-10">
+                <h3 id="m1-task-title" class="font-bold text-lg text-blue-400 mb-1">Task</h3>
+                <p id="m1-task-desc" class="text-sm text-gray-200">Description goes here</p>
+                <div id="m1-measurement" class="hidden mt-2 p-2 bg-slate-800 rounded border border-yellow-500 text-yellow-400 font-mono text-sm"></div>
+                <!-- Contextual buttons -->
+                <button id="m1-action-btn" class="mt-3 px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded font-bold text-sm hidden">Action</button>
+            </div>
+
+            <!-- Mode 1 Reset Metals Button -->
+            <div id="m1-reset-btn" class="absolute bottom-6 left-4 interactive-ui z-10 hidden">
+                <button onclick="resetMetals()" class="glass-panel p-2 px-3 rounded-lg font-bold text-xs hover:bg-slate-700 transition-colors shadow flex items-center">
+                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Reset Metals
+                </button>
+            </div>
+        </div>
+
+        <!-- MODE 2 UI: Magnetic Mazes -->
+        <div id="ui-mode2" class="ui-layer">
+            <!-- Top Bar -->
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-max flex justify-center items-center gap-4 glass-panel px-6 py-2 rounded-xl interactive-ui z-20">
+                <h1 class="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-red-400 m-0">Magnetic Mazes</h1>
+                <div class="w-px h-5 bg-gray-600"></div>
+                <p id="level-display" class="text-sm font-bold text-yellow-400 m-0 whitespace-nowrap">Level 1 of 10</p>
+            </div>
+
+            <!-- Controls Info -->
+            <div class="absolute top-16 right-4 glass-panel p-2.5 rounded-xl w-32 interactive-ui z-20">
+                <h3 class="font-bold text-xs mb-1.5 text-center text-gray-200">Controls</h3>
+                <ul class="text-[10px] text-gray-400 space-y-1.5 m-0 p-0 list-none">
+                    <li class="flex items-center"><span class="bg-gray-700 px-1 py-0.5 rounded mr-1.5 text-white">Drag</span> Move</li>
+                    <li class="flex items-center"><span class="bg-gray-700 px-1 py-0.5 rounded mr-1.5 text-white">Click</span> Rotate</li>
+                </ul>
+            </div>
+
+            <!-- Tutorial Panel -->
+            <div id="tutorial-panel" class="absolute top-16 left-4 interactive-ui glass-panel p-3 rounded-xl w-60 tutorial-highlight hidden z-20">
+                <div class="flex items-center mb-2">
+                    <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center mr-2 font-bold text-white text-xs">!</div>
+                    <h3 class="font-bold text-sm text-blue-300">Guide</h3>
+                </div>
+                <p id="tutorial-text" class="text-xs text-gray-200 mb-2 h-12 flex items-center"></p>
+                <div class="flex justify-between items-center mt-1">
+                    <span id="tutorial-progress" class="text-[10px] text-gray-400">Step 1/4</span>
+                    <button id="btn-tutorial-next" class="px-2 py-1 bg-blue-600 rounded text-xs font-bold">Next</button>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="absolute bottom-6 left-4 interactive-ui z-20 glass-panel p-1.5 rounded-xl flex gap-2 items-center" id="action-bar">
+                <button id="btn-reset" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-xs">Reset Level</button>
+                <div class="w-px h-4 bg-gray-600"></div>
+                <button id="btn-play" class="px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg font-bold text-sm flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    Test Physics!
+                </button>
+            </div>
+        </div>
+
+        <!-- MODE 3 UI: Electromagnets -->
+        <div id="ui-mode3" class="ui-layer">
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 glass-panel px-3 py-1.5 rounded-xl interactive-ui grid grid-cols-2 gap-2 z-10 w-max">
+                <button onclick="m3_loadTask(1)" class="px-3 py-1 bg-yellow-600 rounded hover:bg-yellow-500 text-xs font-bold w-full text-black">Task 1: Simple Electromagnet</button>
+                <button onclick="m3_loadTask(2)" class="px-3 py-1 bg-yellow-600 rounded hover:bg-yellow-500 text-xs font-bold w-full text-black">Task 2: Induction</button>
+            </div>
+
+            <!-- Moved instruction prompt to the top right and made it compact -->
+            <div class="absolute top-16 right-4 glass-panel px-4 py-2 rounded-xl interactive-ui text-left max-w-[240px] z-10 pointer-events-none">
+                <h1 id="m3-task-title" class="text-sm font-bold text-yellow-400 mb-1 leading-tight">Electromagnet Simulator</h1>
+                <p id="m3-task-desc" class="text-[10px] text-gray-300 leading-tight">Description.</p>
+            </div>
+
+            <!-- Mode 3 Reset Metals Button -->
+            <div id="m3-reset-btn" class="absolute bottom-6 left-4 interactive-ui z-10 hidden">
+                <button onclick="resetMetals()" class="glass-panel p-2 px-3 rounded-lg font-bold text-xs hover:bg-slate-700 transition-colors shadow flex items-center">
+                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Reset Metals
+                </button>
+            </div>
+
+            <!-- Task 1 Controls: Simple EM -->
+            <div id="m3-controls-t1" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 glass-panel p-3 rounded-xl interactive-ui w-full max-w-sm flex flex-col gap-3 hidden">
+                <div class="flex-1 w-full space-y-2">
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1"><span>Number of Loops</span> <span id="lbl-coils-t1">10 loops</span></div>
+                        <input type="range" id="sl-coils-t1" min="1" max="20" value="10" oninput="m3_updateVars()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1"><span>Batteries (Voltage)</span> <span id="lbl-batteries-t1">2 units</span></div>
+                        <input type="range" id="sl-batteries-t1" min="1" max="5" value="2" oninput="m3_updateVars()">
+                    </div>
+                </div>
+                <button id="btn-power-t1" onclick="m3_togglePower()" class="w-full py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow active:scale-95">
+                    POWER: OFF
+                </button>
+                <div class="text-center mt-0.5">
+                    <span class="text-[11px] font-bold text-gray-300 uppercase tracking-wider">Paperclips Attached: <span id="m3-attached-count" class="text-yellow-400 text-sm">0</span></span>
+                </div>
+            </div>
+
+            <!-- Task 2 Controls: Induction -->
+            <div id="m3-controls-t2" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 glass-panel p-3 rounded-xl interactive-ui w-full max-w-xl flex flex-col md:flex-row gap-4 items-center hidden">
+                <div class="flex-1 w-full space-y-2">
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1"><span>Number of Loops</span> <span id="lbl-coils-t2">10 loops</span></div>
+                        <input type="range" id="sl-coils-t2" min="1" max="20" value="10" oninput="m3_updateVars()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1"><span>Batteries (Voltage)</span> <span id="lbl-batteries-t2">2 units</span></div>
+                        <input type="range" id="sl-batteries-t2" min="1" max="5" value="2" oninput="m3_updateVars()">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[10px] font-bold mb-1"><span>Thrust Speed</span> <span id="lbl-speed-t2">Medium</span></div>
+                        <input type="range" id="sl-speed-t2" min="1" max="10" value="5" oninput="m3_updateVars()">
+                    </div>
+                </div>
+                <div class="flex-shrink-0 flex flex-col items-center gap-1">
+                    <button id="btn-thrust" onclick="m3_triggerThrust()" class="w-24 py-2 bg-yellow-500 hover:bg-yellow-400 text-black rounded-lg font-extrabold text-sm shadow-[0_0_10px_rgba(234,179,8,0.5)] transition-transform active:scale-95">
+                        THRUST!
+                    </button>
+                    <div class="text-center w-full mt-1">
+                        <span class="text-[8px] text-gray-400 uppercase tracking-widest">Brightness</span>
+                        <div class="w-full h-1.5 bg-gray-800 rounded mt-0.5 overflow-hidden relative">
+                            <div id="meter-light" class="h-full bg-yellow-400 w-0 transition-all duration-100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shared Victory/Info Modal -->
+        <div id="modal-overlay">
+            <div class="glass-panel p-8 rounded-2xl text-center max-w-sm transform scale-100 transition-transform">
+                <div id="modal-icon-container" class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(34,197,94,0.6)]">
+                    <svg id="modal-icon-svg" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <h2 id="modal-title" class="text-3xl font-bold text-white mb-2">Great Job!</h2>
+                <p id="modal-desc" class="text-sm text-gray-300 mb-6">Description.</p>
+                <button id="btn-next" class="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg transition-colors shadow-lg">
+                    Continue
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CORE SYSTEM GLOBALS ---
+        let currentAppMode = 'MENU'; // MENU, MODE1, MODE2, MODE3
+        const clock = new THREE.Clock();
+        let animationId;
+        
+        // Raycasting
+        let raycaster = new THREE.Raycaster();
+        let mouse = new THREE.Vector2();
+        let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+        let selectedMagnet = null;
+        let offset = new THREE.Vector3();
+        let isDragging = false;
+        let pointerDownPos = new THREE.Vector2();
+
+        // 3D Setup
+        const gameContainer = document.getElementById('game-container');
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a202c);
+        scene.fog = new THREE.Fog(0x1a202c, 20, 60);
+
+        const camera = new THREE.PerspectiveCamera(45, gameContainer.clientWidth / gameContainer.clientHeight, 0.1, 1000);
+        camera.position.set(0, 25, 20);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(gameContainer.clientWidth, gameContainer.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        dirLight.castShadow = true;
+        dirLight.shadow.camera.left = -20;
+        dirLight.shadow.camera.right = 20;
+        dirLight.shadow.camera.top = 20;
+        dirLight.shadow.camera.bottom = -20;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        let floor, gridHelper;
+
+        function initEnvironment() {
+            const floorGeo = new THREE.PlaneGeometry(100, 100);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x2d3748, roughness: 0.8 });
+            floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            gridHelper = new THREE.GridHelper(60, 60, 0x4a5568, 0x2d3748);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+        }
+
+        function clearSceneCompletely() {
+            const objectsToRemove = [];
+            scene.traverse((child) => {
+                if (child !== scene && child !== camera && child !== ambientLight && child !== dirLight && child !== floor && child !== gridHelper) {
+                    objectsToRemove.push(child);
+                }
+            });
+            objectsToRemove.forEach(obj => {
+                scene.remove(obj);
+                if(obj.geometry) obj.geometry.dispose();
+                if(obj.material) {
+                    if(Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+                    else obj.material.dispose();
+                }
+            });
+            
+            magnets = []; compasses = []; obstacles = []; holeMeshes = []; guideArrows = [];
+            m1_items = []; m1_filings = null; m3_elements = {};
+            selectedMagnet = null;
+            m1_hangedMagnet = null; m1_hangedString = null; m1_hangedVelocity.set(0,0,0);
+            isPlaying = false;
+
+            const lblContainer = document.getElementById('m1-labels-container');
+            if (lblContainer) lblContainer.innerHTML = '';
+            if (typeof m1_htmlLabels !== 'undefined') m1_htmlLabels = [];
+        }
+
+        // --- COMMON 3D UTILS ---
+        function createMagnet(x, z, rotationAngle = 0, yPos = 0.5) {
+            const magnetGroup = new THREE.Group();
+            magnetGroup.position.set(x, yPos, z);
+            magnetGroup.rotation.y = rotationAngle;
+            magnetGroup.userData = { isMagnet: true };
+
+            const length = 4, width = 1.2, height = 0.8;
+            const northGeo = new THREE.BoxGeometry(length/2, height, width);
+            const northMat = new THREE.MeshStandardMaterial({ color: 0xe53e3e, roughness: 0.3, metalness: 0.4 });
+            const northMesh = new THREE.Mesh(northGeo, northMat);
+            northMesh.position.x = length/4;
+            northMesh.castShadow = true;
+            magnetGroup.add(northMesh);
+
+            const southGeo = new THREE.BoxGeometry(length/2, height, width);
+            const southMat = new THREE.MeshStandardMaterial({ color: 0x3182ce, roughness: 0.3, metalness: 0.4 });
+            const southMesh = new THREE.Mesh(southGeo, southMat);
+            southMesh.position.x = -length/4;
+            southMesh.castShadow = true;
+            magnetGroup.add(southMesh);
+
+            const northMarker = new THREE.Object3D(); northMarker.position.x = length/2 - 0.2;
+            magnetGroup.add(northMarker); magnetGroup.northMarker = northMarker;
+            const southMarker = new THREE.Object3D(); southMarker.position.x = -length/2 + 0.2;
+            magnetGroup.add(southMarker); magnetGroup.southMarker = southMarker;
+
+            const hitGeo = new THREE.BoxGeometry(length + 0.5, height + 1, width + 1);
+            const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+            const hitBox = new THREE.Mesh(hitGeo, hitMat);
+            hitBox.userData = { parentGroup: magnetGroup };
+            magnetGroup.add(hitBox);
+
+            scene.add(magnetGroup);
+            magnets.push(magnetGroup);
+            return magnetGroup;
+        }
+
+        function createCustomElectromagnet(x, y, z, isDraggable) {
+            const emGroup = new THREE.Group();
+            emGroup.position.set(x, y, z);
+            
+            if (isDraggable) {
+                emGroup.userData = { isMagnet: true, isElectromagnet: true };
+                magnets.push(emGroup);
+            }
+
+            // Core
+            const coreGeo = new THREE.CylinderGeometry(0.8, 0.8, 8);
+            const coreMat = new THREE.MeshStandardMaterial({color: 0x9ca3af, metalness:0.8});
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            core.rotation.z = Math.PI/2;
+            emGroup.add(core);
+            emGroup.userData.coreMat = coreMat;
+
+            // Primary Coil Group (Loops will be dynamically generated inside)
+            const priCoilGroup = new THREE.Group();
+            emGroup.add(priCoilGroup);
+            emGroup.userData.priCoil = priCoilGroup;
+
+            // Batteries attached to top via visible circuit
+            const batteriesGroup = new THREE.Group();
+            batteriesGroup.position.set(0, 2.5, 0); // Elevated away from core
+            emGroup.add(batteriesGroup);
+            emGroup.userData.batteriesGroup = batteriesGroup;
+
+            // Wires connecting batteries to the ends of the core
+            const wireMat = new THREE.MeshStandardMaterial({color: 0x333333, roughness: 0.8});
+            const leftWire = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5), wireMat);
+            leftWire.position.set(-3.5, -1.25, 0);
+            batteriesGroup.add(leftWire);
+
+            const rightWire = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5), wireMat);
+            rightWire.position.set(3.5, -1.25, 0);
+            batteriesGroup.add(rightWire);
+
+            const topWire = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 7), wireMat);
+            topWire.rotation.z = Math.PI/2;
+            batteriesGroup.add(topWire);
+
+            // Invisible markers for physics calculations
+            const northMarker = new THREE.Object3D(); northMarker.position.x = 4;
+            emGroup.add(northMarker); emGroup.northMarker = northMarker;
+            const southMarker = new THREE.Object3D(); southMarker.position.x = -4;
+            emGroup.add(southMarker); emGroup.southMarker = southMarker;
+
+            if (isDraggable) {
+                // Invisible Hitbox for dragging
+                const hitGeo = new THREE.BoxGeometry(9, 4.5, 3);
+                const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+                const hitBox = new THREE.Mesh(hitGeo, hitMat);
+                hitBox.userData = { parentGroup: emGroup };
+                emGroup.add(hitBox);
+            }
+
+            scene.add(emGroup);
+            return emGroup;
+        }
+
+        // Object Creation Helpers (Used by Mode 1 & 3)
+        const createNail = () => {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({color: 0x888888, metalness: 0.9, roughness: 0.4});
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8), mat);
+            const head = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05), mat); head.position.y = 0.4;
+            const tip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15), mat); tip.position.y = -0.475;
+            group.add(body, head, tip);
+            return group;
+        };
+        const createPaperClip = () => {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({color: 0xdcdcdc, metalness: 1.0, roughness: 0.2}); // Shiny silver
+            const clip = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.03, 8, 24), mat); clip.scale.set(1, 2.5, 1);
+            group.add(clip);
+            return group;
+        };
+        const createStaple = () => {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({color: 0x999999, metalness: 0.8, roughness: 0.3});
+            const top = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.03, 0.03), mat);
+            const left = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), mat); left.position.set(-0.185, -0.1, 0);
+            const right = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.03), mat); right.position.set(0.185, -0.1, 0);
+            group.add(top, left, right);
+            return group;
+        };
+
+        function spawnMetalScrap(count, xCenter, zCenter, spread) {
+            for(let i=0; i<count; i++) {
+                let rand = Math.random(), item;
+                if (rand < 0.33) item = createNail();
+                else if (rand < 0.66) item = createPaperClip();
+                else item = createStaple();
+
+                item.position.set(xCenter + (Math.random()-0.5)*spread, 0.2, zCenter + (Math.random()-0.5)*spread);
+                item.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                item.userData.isMetal = true;
+                scene.add(item);
+                m1_items.push(item);
+            }
+        }
+
+        function spawnPaperClips(count, xCenter, zCenter, spread) {
+            for(let i=0; i<count; i++) {
+                let item = createPaperClip();
+                item.position.set(xCenter + (Math.random()-0.5)*spread, 0.2, zCenter + (Math.random()-0.5)*spread);
+                item.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                item.userData.isMetal = true;
+                scene.add(item);
+                m1_items.push(item);
+            }
+        }
+
+        // Action to re-scatter objects
+        function resetMetals() {
+            if (currentAppMode === 'MODE3' && m3_currentTask === 1) {
+                m1_items.forEach(item => {
+                    if (item.userData.isMetal) {
+                        item.position.set((Math.random()-0.5)*10, 0.2, (Math.random()-0.5)*10);
+                        item.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                    }
+                });
+            } else if (currentAppMode === 'MODE1') {
+                if (m1_currentTask === 3) {
+                    m1_items.forEach(item => {
+                        if (item.userData.isMetal) {
+                            item.position.set(6.75 + (Math.random()-0.5)*1.5, 0.2, (Math.random()-0.5)*1.5);
+                            item.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
+                        }
+                    });
+                    m1_attractionTriggered = false;
+                    const measEl = document.getElementById('m1-measurement');
+                    if (measEl) {
+                        measEl.dataset.triggered = "";
+                        measEl.className = "mt-2 p-2 bg-slate-800 rounded border border-yellow-500 text-yellow-400 font-mono text-sm mx-auto w-max";
+                        measEl.innerText = "Distance to Objects: -- cm";
+                    }
+                } else if (m1_currentTask === 4) {
+                    m1_loadTask(4); // Reloads the bin challenge fully
+                }
+            }
+        }
+
+        // --- APP STATE MANAGEMENT ---
+        function setGameMode(mode) {
+            currentAppMode = mode;
+            document.querySelectorAll('.ui-layer').forEach(el => el.style.display = 'none');
+            document.getElementById('btn-back').style.display = (mode === 'MENU') ? 'none' : 'block';
+            document.getElementById('modal-overlay').style.display = 'none';
+            
+            clearSceneCompletely();
+
+            if (mode === 'MENU') {
+                document.getElementById('ui-main-menu').style.display = 'flex';
+                createMagnet(-5, -5, Math.PI/4).userData.autoRotate = true;
+                createMagnet(5, 5, -Math.PI/4).userData.autoRotate = true;
+                camera.position.set(0, 30, 25);
+                camera.lookAt(0,0,0);
+            } else if (mode === 'MODE1') {
+                document.getElementById('ui-mode1').style.display = 'block';
+                camera.position.set(0, 20, 15);
+                m1_loadTask(1);
+            } else if (mode === 'MODE2') {
+                document.getElementById('ui-mode2').style.display = 'block';
+                camera.position.set(0, 25, 20);
+                currentLevel = 0;
+                initMode2Level();
+            } else if (mode === 'MODE3') {
+                document.getElementById('ui-mode3').style.display = 'block';
+                camera.position.set(0, 15, 15);
+                m3_loadTask(1);
+            }
+        }
+
+        // ==========================================
+        //         MODE 1: CHARACTERISTICS LAB
+        // ==========================================
+        let m1_currentTask = 1;
+        let m1_items = [];
+        let m1_filings = null;
+        let m1_hangedMagnet = null;
+        let m1_hangedString = null;
+        let m1_hangedVelocity = new THREE.Vector3();
+        let m1_attractionTriggered = false;
+        let m1_task4_magnetOn = false;
+        let m1_htmlLabels = [];
+
+        function m1_loadTask(taskNum) {
+            clearSceneCompletely();
+            m1_currentTask = taskNum;
+            const titleEl = document.getElementById('m1-task-title');
+            const descEl = document.getElementById('m1-task-desc');
+            const actionBtn = document.getElementById('m1-action-btn');
+            const measEl = document.getElementById('m1-measurement');
+            const resetBtn = document.getElementById('m1-reset-btn');
+            
+            actionBtn.style.display = 'none';
+            measEl.style.display = 'none';
+            measEl.dataset.triggered = "";
+            m1_attractionTriggered = false;
+
+            if (resetBtn) resetBtn.style.display = (taskNum === 3 || taskNum === 4) ? 'block' : 'none';
+
+            if (taskNum === 1) {
+                titleEl.innerText = "Task 1: Attract & Repel";
+                descEl.innerText = "Drag the magnet from the right towards the hanging magnet. Watch how the yarn allows it to swing. Like poles repel, opposite poles attract!";
+                
+                const standBase = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 0.5), new THREE.MeshStandardMaterial({color:0x333333})); standBase.position.set(0, 0.25, -4); scene.add(standBase);
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 8), new THREE.MeshStandardMaterial({color:0xaaaaaa})); pole.position.set(0, 4, -4); scene.add(pole);
+                const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.5), new THREE.MeshStandardMaterial({color:0xaaaaaa})); arm.rotation.x = Math.PI/2; arm.position.set(0, 8, -1.75); scene.add(arm);
+                const topKnot = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.03, 8, 16), new THREE.MeshStandardMaterial({color:0xeeeeee})); topKnot.rotation.y = Math.PI/2; topKnot.position.set(0, 8, 0); scene.add(topKnot);
+                
+                m1_hangedString = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 7.5), new THREE.MeshStandardMaterial({color:0xeeeeee})); scene.add(m1_hangedString);
+                m1_hangedMagnet = createMagnet(0, 0, 0, 0.5); m1_hangedMagnet.userData.isHanged = true;
+                const magnetLoop = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.04, 8, 20), new THREE.MeshStandardMaterial({color:0xeeeeee})); magnetLoop.rotation.y = Math.PI/2; m1_hangedMagnet.add(magnetLoop);
+                
+                createMagnet(8, 0, 0, 0.5);
+
+            } else if (taskNum === 2) {
+                titleEl.innerText = "Task 2: Magnetic Fields";
+                descEl.innerText = "Drag the magnet around. Click 'Pour Filings' to drop iron filings onto the paper to reveal the invisible magnetic field lines!";
+                actionBtn.style.display = 'inline-block';
+                actionBtn.innerText = "Pour Iron Filings";
+                actionBtn.onclick = m1_pourFilings;
+
+                const paper = new THREE.Mesh(new THREE.PlaneGeometry(20, 14), new THREE.MeshStandardMaterial({color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.75}));
+                paper.rotation.x = -Math.PI/2; paper.position.y = 1.0; scene.add(paper);
+                createMagnet(0, 0.5, 0);
+
+            } else if (taskNum === 3) {
+                titleEl.innerText = "Task 3: Magnetic Force & Distance";
+                descEl.innerText = "Drag the magnet slowly along the ruler towards the objects. Notice the exact distance on the ruler where the magnetic force pulls them in!";
+                measEl.style.display = 'block'; measEl.innerText = "Distance to Objects: -- cm"; measEl.className = "mt-2 p-2 bg-slate-800 rounded border border-yellow-500 text-yellow-400 font-mono text-sm mx-auto w-max";
+
+                const rulerGroup = new THREE.Group(); rulerGroup.position.set(0, 0.05, 0);
+                rulerGroup.add(new THREE.Mesh(new THREE.BoxGeometry(16, 0.1, 2), new THREE.MeshStandardMaterial({color: 0xfacc15, roughness: 0.8})));
+                const tickMat = new THREE.MeshBasicMaterial({color: 0x000000});
+                for(let i = -8; i <= 8; i++) {
+                    let tick = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.12, (i%2===0) ? 1 : 0.5), tickMat);
+                    tick.position.set(i, 0, (i%2===0) ? -0.5 : -0.75); rulerGroup.add(tick);
+                }
+                scene.add(rulerGroup);
+
+                createMagnet(-6, 0, 0);
+                spawnMetalScrap(15, 6.75, 0, 1.5);
+
+            } else if (taskNum === 4) {
+                titleEl.innerText = "Task 4: Magnetic Materials";
+                descEl.innerText = "Click 'Start Test' to turn on the magnet and see what's attracted. Then 'Stop Test' to classify them into the correct bins!";
+                
+                actionBtn.style.display = 'inline-block';
+                m1_task4_magnetOn = false;
+                actionBtn.innerText = "Start Test"; actionBtn.className = "mt-3 px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded font-bold text-sm";
+                actionBtn.onclick = () => {
+                    m1_task4_magnetOn = !m1_task4_magnetOn;
+                    actionBtn.innerText = m1_task4_magnetOn ? "Stop Test" : "Start Test";
+                    actionBtn.className = m1_task4_magnetOn ? "mt-3 px-4 py-1.5 bg-red-600 hover:bg-red-500 rounded font-bold text-sm" : "mt-3 px-4 py-1.5 bg-green-600 hover:bg-green-500 rounded font-bold text-sm";
+                };
+
+                // Positioned exactly between the green (-6, -5) and red (6, -5) bins
+                createMagnet(0, 0.5, -5);
+                const lblContainer = document.getElementById('m1-labels-container');
+
+                const binGeo = new THREE.BoxGeometry(6, 0.5, 6);
+                const greenBin = new THREE.Mesh(binGeo, new THREE.MeshBasicMaterial({color: 0x059669, transparent:true, opacity:0.3})); greenBin.position.set(-6, 0.1, -5); scene.add(greenBin);
+                let gLbl = document.createElement('div'); gLbl.className = 'absolute text-xs font-bold text-green-300 bg-black/70 px-2 py-1 rounded transform -translate-x-1/2 -translate-y-1/2'; gLbl.innerText = 'Magnetic'; lblContainer.appendChild(gLbl); m1_htmlLabels.push({ mesh: greenBin, el: gLbl, offset: 0.5 });
+
+                const redBin = new THREE.Mesh(binGeo, new THREE.MeshBasicMaterial({color: 0xdc2626, transparent:true, opacity:0.3})); redBin.position.set(6, 0.1, -5); scene.add(redBin);
+                let rLbl = document.createElement('div'); rLbl.className = 'absolute text-xs font-bold text-red-300 bg-black/70 px-2 py-1 rounded transform -translate-x-1/2 -translate-y-1/2'; rLbl.innerText = 'Non-Magnetic'; lblContainer.appendChild(rLbl); m1_htmlLabels.push({ mesh: redBin, el: rLbl, offset: 0.5 });
+                
+                const objectsToSpawn = [
+                    {name:"Iron Nail", color:0xaaaaaa, mag:true, shape:'cyl'}, {name:"Wood Block", color:0x8b5a2b, mag:false, shape:'box'}, {name:"Plastic Bead", color:0x3b82f6, mag:false, shape:'sph'},
+                    {name:"Steel Clip", color:0x555555, mag:true, shape:'box'}, {name:"Rubber Band", color:0xeab308, mag:false, shape:'tor'}, {name:"Lead Weight", color:0x444444, mag:false, shape:'box'}
+                ];
+
+                objectsToSpawn.forEach((obj, idx) => {
+                    let geo;
+                    if(obj.shape==='cyl') geo = new THREE.CylinderGeometry(0.3, 0.3, 1.5);
+                    else if(obj.shape==='sph') geo = new THREE.SphereGeometry(0.5);
+                    else if(obj.shape==='tor') geo = new THREE.TorusGeometry(0.4, 0.1);
+                    else geo = new THREE.BoxGeometry(1, 1, 1);
+                    
+                    let mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: obj.color, roughness:0.7}));
+                    mesh.position.set(-8 + idx*3, 0.5, 0); mesh.userData = { isMetal: obj.mag, sortable: true };
+                    scene.add(mesh); m1_items.push(mesh);
+
+                    let itemLbl = document.createElement('div'); itemLbl.className = 'absolute text-[10px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded transform -translate-x-1/2 -translate-y-1/2 whitespace-nowrap'; itemLbl.innerText = obj.name; lblContainer.appendChild(itemLbl); m1_htmlLabels.push({ mesh: mesh, el: itemLbl, offset: 1.0 });
+                });
+            }
+        }
+
+        function m1_pourFilings() {
+            if(m1_filings) scene.remove(m1_filings);
+            m1_filings = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), new THREE.MeshBasicMaterial({ color: 0x333333 }), 3000);
+            const dummy = new THREE.Object3D();
+            for ( let i = 0; i < 3000; i ++ ) {
+                dummy.position.set((Math.random()-0.5)*18, 5 + Math.random()*5, (Math.random()-0.5)*12);
+                dummy.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0); dummy.updateMatrix();
+                m1_filings.setMatrixAt( i, dummy.matrix );
+            }
+            m1_filings.userData.isSettling = true; m1_filings.instanceMatrix.setUsage( THREE.DynamicDrawUsage ); scene.add(m1_filings);
+        }
+
+        function updateMode1(dt) {
+            if (m1_currentTask === 1 && m1_hangedMagnet && magnets.length > 1) {
+                let handMag = magnets[1];
+                let n1 = new THREE.Vector3(); m1_hangedMagnet.northMarker.getWorldPosition(n1); let s1 = new THREE.Vector3(); m1_hangedMagnet.southMarker.getWorldPosition(s1);
+                let n2 = new THREE.Vector3(); handMag.northMarker.getWorldPosition(n2); let s2 = new THREE.Vector3(); handMag.southMarker.getWorldPosition(s2);
+                
+                let force = new THREE.Vector3(0, 0, 0);
+                const applyForce = (p1, p2, sign) => { let dir = new THREE.Vector3().subVectors(p1, p2); let dist = dir.length(); if(dist > 0.5 && dist < 10) force.add(dir.normalize().multiplyScalar(sign * 25 / (dist * dist))); };
+                applyForce(n1, n2, 1); applyForce(n1, s2, -1); applyForce(s1, s2, 1); applyForce(s1, n2, -1);
+
+                force.add(new THREE.Vector3(-m1_hangedMagnet.position.x, 0, -m1_hangedMagnet.position.z).multiplyScalar(15.0)); // Pendulum center pull
+                m1_hangedVelocity.add(force.multiplyScalar(dt)); m1_hangedVelocity.multiplyScalar(0.92);
+                m1_hangedMagnet.position.x += m1_hangedVelocity.x * dt; m1_hangedMagnet.position.z += m1_hangedVelocity.z * dt;
+
+                let dx = m1_hangedMagnet.position.x, dz = m1_hangedMagnet.position.z, r2 = dx*dx + dz*dz;
+                if(r2 > 50) { let r = Math.sqrt(r2); m1_hangedMagnet.position.x = (dx/r) * Math.sqrt(50); m1_hangedMagnet.position.z = (dz/r) * Math.sqrt(50); dx = m1_hangedMagnet.position.x; dz = m1_hangedMagnet.position.z; }
+                m1_hangedMagnet.position.y = 8 - Math.sqrt(56.25 - (dx*dx + dz*dz));
+
+                if(m1_hangedString) {
+                    let pivot = new THREE.Vector3(0, 8, 0), target = m1_hangedMagnet.position.clone(), distance = pivot.distanceTo(target);
+                    m1_hangedString.position.copy(pivot).lerp(target, 0.5); m1_hangedString.scale.set(1, distance / 7.5, 1);
+                    m1_hangedString.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), target.clone().sub(pivot).normalize());
+                }
+
+                let angleToHand = Math.atan2(handMag.position.x - m1_hangedMagnet.position.x, handMag.position.z - m1_hangedMagnet.position.z);
+                let rotForce = (1/(n1.distanceTo(n2)+0.1)) + (1/(s1.distanceTo(s2)+0.1)) - (1/(n1.distanceTo(s2)+0.1)) - (1/(s1.distanceTo(n2)+0.1));
+                if(Math.abs(rotForce) > 0.05) {
+                    let diff = (angleToHand + (rotForce > 0 ? Math.PI/2 : -Math.PI/2)) - m1_hangedMagnet.rotation.y;
+                    while(diff > Math.PI) diff -= Math.PI*2; while(diff < -Math.PI) diff += Math.PI*2;
+                    m1_hangedMagnet.rotation.y += diff * dt * 2;
+                }
+            }
+
+            if (m1_currentTask === 2 && m1_filings && m1_filings.userData.isSettling && magnets.length > 0) {
+                let mag = magnets[0], nPos = new THREE.Vector3(), sPos = new THREE.Vector3(), dummy = new THREE.Object3D(), settledCount = 0;
+                mag.northMarker.getWorldPosition(nPos); mag.southMarker.getWorldPosition(sPos);
+                
+                for(let i=0; i<m1_filings.count; i++) {
+                    m1_filings.getMatrixAt(i, dummy.matrix); dummy.position.setFromMatrixPosition(dummy.matrix);
+                    if(dummy.position.y > 1.05) dummy.position.y -= dt * 10;
+                    else {
+                        dummy.position.y = 1.05; settledCount++;
+                        let B = new THREE.Vector3(0,0,0), rN = new THREE.Vector3().subVectors(dummy.position, nPos), rS = new THREE.Vector3().subVectors(dummy.position, sPos);
+                        let dN = rN.lengthSq(); if(dN>0.1) B.add(rN.normalize().multiplyScalar(1/dN));
+                        let dS = rS.lengthSq(); if(dS>0.1) B.add(rS.normalize().multiplyScalar(-1/dS));
+                        if(B.lengthSq() > 0.001) { dummy.rotation.x = Math.PI/2; dummy.rotation.z = Math.atan2(B.x, B.z); }
+                    }
+                    dummy.updateMatrix(); m1_filings.setMatrixAt(i, dummy.matrix);
+                }
+                m1_filings.instanceMatrix.needsUpdate = true;
+                if(settledCount === m1_filings.count) m1_filings.userData.isSettling = false;
+            }
+
+            if (m1_currentTask === 4 && m1_htmlLabels.length > 0) {
+                const rect = gameContainer.getBoundingClientRect();
+                m1_htmlLabels.forEach(item => {
+                    let pos = item.mesh.position.clone(); pos.y += item.offset; pos.project(camera);
+                    if (pos.z > 1) { item.el.style.display = 'none'; return; }
+                    item.el.style.display = 'block'; item.el.style.left = `${(pos.x * 0.5 + 0.5) * rect.width}px`; item.el.style.top = `${(pos.y * -0.5 + 0.5) * rect.height}px`;
+                });
+            }
+
+            if ((m1_currentTask === 3 || m1_currentTask === 4) && magnets.length > 0) {
+                let mag = magnets[0], nPos = new THREE.Vector3(), sPos = new THREE.Vector3(), minDist = Infinity;
+                mag.northMarker.getWorldPosition(nPos); mag.southMarker.getWorldPosition(sPos);
+
+                m1_items.forEach(item => {
+                    let pulled = false;
+                    if(item.userData.isMetal) {
+                        let dN = item.position.distanceTo(nPos), dS = item.position.distanceTo(sPos), itemMin = Math.min(dN, dS);
+                        if (itemMin < minDist) minDist = itemMin;
+
+                        let pullTo = null;
+                        if(dN < 4.5 && dN < dS) pullTo = nPos; else if(dS < 4.5) pullTo = sPos;
+                        
+                        let canPull = true; if (m1_currentTask === 4 && !m1_task4_magnetOn) canPull = false;
+
+                        if(pullTo && canPull) { item.position.lerp(pullTo, dt * 5); pulled = true; if (m1_currentTask === 3) m1_attractionTriggered = true; }
+                    }
+
+                    if(!pulled && item.position.y > 0.5 && selectedMagnet !== item) { item.position.y -= dt * 5; if (item.position.y < 0.5) item.position.y = 0.5; }
+                });
+
+                if (m1_currentTask === 3 && minDist !== Infinity) {
+                    const measEl = document.getElementById('m1-measurement');
+                    if (m1_attractionTriggered) {
+                        if (!measEl.dataset.triggered) { measEl.innerText = `Attraction Started at: ${minDist.toFixed(1)} cm!`; measEl.className = "mt-2 p-2 bg-green-900 rounded border border-green-400 text-green-300 font-mono text-sm mx-auto w-max"; measEl.dataset.triggered = "true"; }
+                    } else measEl.innerText = `Distance to Objects: ${minDist.toFixed(1)} cm`;
+                }
+            }
+        }
+
+        // ==========================================
+        //         MODE 2: MAGNETIC MAZES 
+        // ==========================================
+        let ironBall, targetZone;
+        let ballVelocity = new THREE.Vector3(0,0,0);
+        let magnets = [], compasses = [], obstacles = [], holeMeshes = [], guideArrows = [];
+
+        // Truncated list for space, keeping core functionality exact
+        const m2_levels = [
+            { ball: [-8, 0], target: [8, 0], path: [[-8, 0], [8, 0]], magnets: [[0, 6, 0]], obstacles: [] },
+            { ball: [-8, 8], target: [8, -8], path: [[-8, 8], [8, -8]], magnets: [[0, 6, 0], [-6, -4, Math.PI/4]], obstacles: [] },
+            { ball: [-8, -4], target: [8, -0.85], path: [[-8, -4], [8, -0.85]], magnets: [[-8, 4, 0]], obstacles: [[0, 0, 20, 0.5]] },
+            { ball: [-7, 7], target: [7, 7], path: [[-7, 7], [-7, -7], [7, -7], [7, 7]], magnets: [[-11, -11, Math.PI/4], [11, -11, -Math.PI/4]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5], [0, 1.5, 0.5, 13.5]] },
+            { ball: [-7, 7], target: [7, 7], path: [[-7, 7], [-7, -7], [0, -7], [0, 7], [7, 7]], magnets: [[-11, 11, 0], [0, -11, Math.PI/2], [11, 11, 0]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5], [-2.5, 2.5, 0.5, 11.5], [2.5, -2.5, 0.5, 11.5]] },
+            { ball: [-6.5, 6.5], target: [0, 0], path: [[-6.5, 6.5], [6.5, 6.5], [6.5, -6.5], [-6.5, -6.5], [-6.5, 0], [0, 0]], magnets: [[-11, 11, 0], [0, -11, Math.PI/2], [11, 11, 0]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5], [-2, 3.5, 12, 0.5], [3.5, -0.5, 0.5, 8.5], [0, -4.5, 7.5, 0.5], [-3.5, -1.5, 0.5, 6.5]] },
+            { ball: [-7, -6], target: [-7, 6], path: [[-7, -6], [6, -6], [6, -2], [-6, -2], [-6, 2], [6, 2], [6, 6], [-7, 6]], magnets: [[-11, 0, 0], [11, 0, 0], [0, 11, Math.PI/2], [0, -11, Math.PI/2]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5], [-2, -4, 12, 0.5], [2, 0, 12, 0.5], [-2, 4, 12, 0.5]] },
+            { ball: [-7, 0], target: [7, 0], path: [[-7, 0], [0, -5], [7, 0]], magnets: [[0, 11, 0], [0, -11, 0]], holes: [[0, 0, 3]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5]] },
+            { ball: [-7, 7], target: [7, -7], path: [[-7, 7], [0, 7], [0, -7], [7, -7]], magnets: [[-11, 11, 0], [11, -11, 0]], holes: [[-3.5, 3.5, 2.2], [3.5, 3.5, 2.2], [-3.5, -3.5, 2.2], [3.5, -3.5, 2.2], [0, 0, 1.5]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5]] },
+            { ball: [-7, 7], target: [7, 7], path: [[-7, 7], [-7, -7], [7, -7], [7, 7]], magnets: [[-11, -11, Math.PI/4], [11, -11, -Math.PI/4], [0, 11, Math.PI/2]], holes: [[-4.5, 4.5, 2], [4.5, 4.5, 2], [-4.5, -4.5, 2], [4.5, -4.5, 2]], obstacles: [[0, -8, 16.5, 0.5], [0, 8, 16.5, 0.5], [-8, 0, 0.5, 16.5], [8, 0, 0.5, 16.5], [0, 0, 10, 0.5], [0, 0, 0.5, 10]] }
+        ];
+
+        function initMode2Level() {
+            clearSceneCompletely();
+            isPlaying = false;
+            let lvl = m2_levels[currentLevel];
+            
+            const mat = new THREE.MeshStandardMaterial({ color: 0x9ca3af, metalness: 0.9, roughness: 0.2 });
+            ironBall = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 32), mat); ironBall.position.set(lvl.ball[0], 0.6, lvl.ball[1]);
+            ironBall.castShadow = true; scene.add(ironBall); ballVelocity.set(0,0,0);
+
+            const targetGroup = new THREE.Group(); targetGroup.position.set(lvl.target[0], 0.05, lvl.target[1]);
+            targetGroup.add(new THREE.Mesh(new THREE.RingGeometry(1.5, 2, 32), new THREE.MeshBasicMaterial({ color: 0x22c55e, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })).rotateX(-Math.PI/2));
+            targetGroup.add(new THREE.Mesh(new THREE.CircleGeometry(1.4, 32), new THREE.MeshBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.3 })).rotateX(-Math.PI/2));
+            scene.add(targetGroup); targetZone = targetGroup;
+
+            if(lvl.path) {
+                const arrowMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+                const arrowShape = new THREE.Shape(); arrowShape.moveTo(0,0.4); arrowShape.lineTo(0.4,-0.4); arrowShape.lineTo(0,-0.1); arrowShape.lineTo(-0.4,-0.4); arrowShape.lineTo(0,0.4);
+                const arrowGeo = new THREE.ShapeGeometry(arrowShape);
+                for (let j = 0; j < lvl.path.length - 1; j++) {
+                    const startV = new THREE.Vector2(lvl.path[j][0], lvl.path[j][1]), endV = new THREE.Vector2(lvl.path[j+1][0], lvl.path[j+1][1]);
+                    const dist = startV.distanceTo(endV), dir = new THREE.Vector2().subVectors(endV, startV).normalize();
+                    for (let i = 1; i <= Math.floor(dist/1.5); i++) {
+                        if (j === lvl.path.length - 2 && i * 1.5 > dist - 1.5) continue;
+                        const group = new THREE.Group();
+                        const mesh = new THREE.Mesh(arrowGeo, arrowMat); mesh.rotation.x = Math.PI / 2; group.add(mesh);
+                        const pos = startV.clone().add(dir.clone().multiplyScalar(i * 1.5));
+                        group.position.set(pos.x, 0.02, pos.y); group.lookAt(endV.x, 0.02, endV.y);
+                        scene.add(group); guideArrows.push(group);
+                    }
+                }
+            }
+
+            lvl.magnets.forEach(m => createMagnet(m[0], m[1], m[2]));
+            
+            lvl.obstacles.forEach(o => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(o[2], 1.5, o[3]), new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 }));
+                mesh.position.set(o[0], 0.75, o[1]); mesh.castShadow = true; mesh.userData = { width: o[2], depth: o[3], x: o[0], z: o[1] };
+                scene.add(mesh); obstacles.push(mesh);
+            });
+
+            if (lvl.holes) {
+                lvl.holes.forEach(h => {
+                    const group = new THREE.Group(); group.position.set(h[0], 0.01, h[1]);
+                    group.add(new THREE.Mesh(new THREE.CircleGeometry(h[2], 32), new THREE.MeshBasicMaterial({ color: 0x020202, depthWrite: false })).rotateX(-Math.PI/2));
+                    const rim = new THREE.Mesh(new THREE.RingGeometry(h[2], h[2]+0.15, 32), new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.8 }));
+                    rim.rotation.x = -Math.PI/2; rim.position.y = 0.01; group.add(rim);
+                    scene.add(group); holeMeshes.push(group);
+                });
+            }
+
+            const arrowGeo = new THREE.CylinderGeometry(0, 0.2, 0.8, 4); arrowGeo.translate(0, 0.4, 0); arrowGeo.rotateX(Math.PI / 2);
+            const redMat = new THREE.MeshBasicMaterial({ color: 0xff4444 }), whiteMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
+            for (let x = -16; x <= 16; x += 2) {
+                for (let z = -12; z <= 12; z += 2) {
+                    const group = new THREE.Group(); group.position.set(x, 0.1, z);
+                    const sp = new THREE.Mesh(arrowGeo, whiteMat); sp.rotation.y = Math.PI;
+                    group.add(new THREE.Mesh(arrowGeo, redMat)); group.add(sp);
+                    scene.add(group); compasses.push(group);
+                }
+            }
+            
+            document.getElementById('level-display').innerText = `Level ${currentLevel + 1} of 10`;
+            const btnPlay = document.getElementById('btn-play');
+            btnPlay.innerHTML = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg> Test Physics!`;
+            btnPlay.classList.replace('from-red-500', 'from-green-500'); btnPlay.classList.replace('to-red-600', 'to-emerald-600');
+            
+            const tutorialContent = [
+                ["Welcome to the Magnets Laboratory! Your goal is to guide the silver iron ball to the glowing green target zone.", "See the bar magnet? It has a Red (North) and Blue (South) pole. The iron ball is attracted to BOTH poles!", "Try it out! Use your mouse or finger to DRAG the magnet closer to the glowing blue guide arrows.", "Once you've placed the magnet where it will pull the ball towards the target, click the green 'Test Physics!' button at the bottom."],
+                ["Excellent! Notice how the target is now at an angle? And you have two magnets this time.", "You can ROTATE a magnet to change its magnetic field lines. Just CLICK or TAP on it quickly.", "Rotate and drag both magnets to pull the ball along the curved glowing path.", "Click 'Test Physics!' when you are ready to test your setup!"],
+                ["Level 3: Magnetic forces can pass right through solid non-magnetic objects!", "There is a wooden wall blocking the ball from reaching the magnet directly.", "Click 'Test Physics!' to start the simulation.", "Now DRAG the magnet live to pull the ball along the wall and guide it to the finish area!"],
+                ["Level 4: Corners! The ball is inside a closed box, and you have two magnets.", "Magnets can't enter the box. You must move them along the outside perimeter.", "Place one magnet to pull the ball UP, and another to pull it RIGHT across the gap.", "Remember you can drag them LIVE while the physics simulation is running!"],
+                ["Level 5: The Maze! This requires a sequence of magnetic movements.", "You have three magnets. Position them outside the box to create a path of forces.", "Watch out for the walls! The ball will slide along them if pulled diagonally.", "Can you solve the magnetic maze?"],
+                ["Level 6: The True Spiral! You'll need to carefully pull the ball all the way into the center.", "Move your magnets carefully along the perimeter of the box.", "Use the live physics simulation to drag the ball step-by-step through the interlocking walls."],
+                ["Level 7: The Grand Switchback! Snaking through this maze requires careful magnet placement.", "You have four magnets. Surround the box to pull the ball back and forth.", "Good luck!"],
+                ["Level 8: Danger! Black Holes have appeared.", "If the iron ball is pulled into a hole, it will fall and you'll have to restart the level.", "Use the magnetic fields to guide the ball safely around the edges."],
+                ["Level 9: The Minefield.", "Multiple holes are blocking the direct paths.", "You will need to use precise magnetic forces to thread the needle."],
+                ["Level 10: The Ultimate Challenge!", "Navigate around the center cross while avoiding the deep holes in every corner.", "Prove your mastery of magnetic fields!"]
+            ];
+            
+            const steps = tutorialContent[currentLevel];
+            let stepIdx = 0;
+            const tPanel = document.getElementById('tutorial-panel'), tText = document.getElementById('tutorial-text'), tProg = document.getElementById('tutorial-progress'), tBtn = document.getElementById('btn-tutorial-next');
+            function updateT() {
+                if(stepIdx < steps.length) { tPanel.style.display = 'block'; tText.innerText = steps[stepIdx]; tProg.innerText = `Step ${stepIdx+1}/${steps.length}`; tBtn.innerText = (stepIdx === steps.length-1) ? "Got it!" : "Next"; } else { tPanel.style.display = 'none'; }
+            }
+            tBtn.onclick = () => { stepIdx++; updateT(); }; updateT();
+        }
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            if(currentAppMode !== 'MODE2') return;
+            isPlaying = !isPlaying;
+            document.getElementById('tutorial-panel').style.display = 'none';
+            const btnPlay = document.getElementById('btn-play');
+            if (isPlaying) {
+                btnPlay.innerHTML = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1zm4 0a1 1 0 00-1 1v4a1 1 0 002 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg> Pause`;
+                btnPlay.classList.replace('from-green-500', 'from-red-500'); btnPlay.classList.replace('to-emerald-600', 'to-red-600');
+            } else {
+                btnPlay.innerHTML = `<svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg> Resume`;
+                btnPlay.classList.replace('from-red-500', 'from-green-500'); btnPlay.classList.replace('to-red-600', 'to-emerald-600');
+            }
+        });
+        document.getElementById('btn-reset').addEventListener('click', initMode2Level);
+
+        function updateMode2(dt) {
+            compasses.forEach(compass => {
+                let B = new THREE.Vector3(-0.01, 0, -0.05);
+                magnets.forEach(mag => {
+                    let nP = new THREE.Vector3(); mag.northMarker.getWorldPosition(nP);
+                    let sP = new THREE.Vector3(); mag.southMarker.getWorldPosition(sP);
+                    let rN = new THREE.Vector3().subVectors(compass.position, nP); let dN = rN.lengthSq(); if(dN>0.1) B.add(rN.normalize().multiplyScalar(1/dN));
+                    let rS = new THREE.Vector3().subVectors(compass.position, sP); let dS = rS.lengthSq(); if(dS>0.1) B.add(rS.normalize().multiplyScalar(-1/dS));
+                });
+                
+                if (B.lengthSq() > 0.0001) {
+                    let diff = Math.atan2(B.x, B.z) - compass.rotation.y;
+                    while(diff > Math.PI) diff -= Math.PI * 2; while(diff < -Math.PI) diff += Math.PI * 2;
+                    compass.rotation.y += diff * 0.3;
+                }
+            });
+
+            guideArrows.forEach((group, idx) => { group.children[0].material.opacity = 0.15 + 0.45 * Math.sin(Date.now()*0.005 - idx*0.5); });
+            if(targetZone) targetZone.children[0].scale.setScalar(1 + Math.sin(Date.now()*0.003)*0.05);
+
+            if (!isPlaying || !ironBall) return;
+
+            let totalForce = new THREE.Vector3(0, 0, 0);
+            magnets.forEach(mag => {
+                let nP = new THREE.Vector3(); mag.northMarker.getWorldPosition(nP);
+                let sP = new THREE.Vector3(); mag.southMarker.getWorldPosition(sP);
+                let dN = new THREE.Vector3().subVectors(nP, ironBall.position), lenN = dN.length();
+                if(lenN>0.5) totalForce.add(dN.normalize().multiplyScalar(25.0/(lenN*lenN)));
+                let dS = new THREE.Vector3().subVectors(sP, ironBall.position), lenS = dS.length();
+                if(lenS>0.5) totalForce.add(dS.normalize().multiplyScalar(25.0/(lenS*lenS)));
+            });
+
+            ballVelocity.add(totalForce.multiplyScalar(dt)); ballVelocity.y = 0; ballVelocity.multiplyScalar(0.98); 
+            let nextPos = ironBall.position.clone().add(ballVelocity.clone().multiplyScalar(dt * 10)); nextPos.y = 0.6;
+
+            let fell = false;
+            if (m2_levels[currentLevel].holes) {
+                m2_levels[currentLevel].holes.forEach(h => {
+                    let dx = nextPos.x - h[0], dz = nextPos.z - h[1], dist = Math.sqrt(dx*dx + dz*dz);
+                    if (dist < h[2] - 0.24) { fell = true; nextPos.x = h[0] + dx*0.2; nextPos.z = h[1] + dz*0.2; }
+                });
+            }
+
+            if (fell) {
+                ironBall.position.y -= dt * 8; ironBall.scale.setScalar(Math.max(0.01, ironBall.scale.x - dt*2)); ironBall.rotation.x += dt*10;
+                if(ironBall.position.y < -3) { isPlaying = false; showModal(false, "Oh no!", "The ball fell into a hole.", () => initMode2Level()); }
+            } else {
+                obstacles.forEach(obs => {
+                    let hw = obs.userData.width/2 + 0.6, hd = obs.userData.depth/2 + 0.6;
+                    if (Math.abs(nextPos.x - obs.userData.x) < hw && Math.abs(nextPos.z - obs.userData.z) < hd) {
+                        let dx = Math.abs(ironBall.position.x - obs.userData.x) - hw, dz = Math.abs(ironBall.position.z - obs.userData.z) - hd;
+                        if (dx > dz) { nextPos.x = ironBall.position.x < obs.userData.x ? obs.userData.x - hw : obs.userData.x + hw; ballVelocity.x *= -0.2; ballVelocity.z *= 0.8; } 
+                        else { nextPos.z = ironBall.position.z < obs.userData.z ? obs.userData.z - hd : obs.userData.z + hd; ballVelocity.z *= -0.2; ballVelocity.x *= 0.8; }
+                    }
+                });
+                ironBall.position.copy(nextPos);
+                if (ballVelocity.length() > 0.01) ironBall.rotateOnWorldAxis(new THREE.Vector3(-ballVelocity.z, 0, ballVelocity.x).normalize(), ballVelocity.length()*dt*2);
+            }
+
+            if (targetZone && !fell && ironBall.position.distanceTo(targetZone.position) < 2.0) {
+                isPlaying = false;
+                showModal(true, "Great Job!", currentLevel<9 ? "Ready for the next challenge?" : "You completed all mazes!", () => {
+                    currentLevel = (currentLevel + 1) % m2_levels.length; initMode2Level();
+                });
+            }
+        }
+
+        // ==========================================
+        //         MODE 3: ELECTROMAGNETS
+        // ==========================================
+        let m3_currentTask = 1;
+        let m3_elements = {};
+        let m3_isPowered = false;
+        
+        function m3_loadTask(taskNum) {
+            clearSceneCompletely();
+            m3_currentTask = taskNum;
+            m3_isPowered = false;
+
+            const t1Controls = document.getElementById('m3-controls-t1');
+            const t2Controls = document.getElementById('m3-controls-t2');
+            const titleEl = document.getElementById('m3-task-title');
+            const descEl = document.getElementById('m3-task-desc');
+            const resetBtn = document.getElementById('m3-reset-btn');
+
+            if (resetBtn) resetBtn.style.display = (taskNum === 1) ? 'block' : 'none';
+
+            if (taskNum === 1) {
+                t1Controls.style.display = 'flex';
+                t2Controls.style.display = 'none';
+                titleEl.innerText = "Task 1: Simple Electromagnet";
+                descEl.innerText = "Adjust coils and voltage, turn on the power, and drag your electromagnet to pick up the metal scrap!";
+                
+                let btnPwr = document.getElementById('btn-power-t1');
+                btnPwr.innerText = "POWER: OFF";
+                btnPwr.className = "w-full py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow active:scale-95";
+
+                let countEl = document.getElementById('m3-attached-count');
+                if(countEl) countEl.innerText = "0";
+
+                // Draggable Electromagnet
+                createCustomElectromagnet(0, 1.3, 0, true);
+
+                // Paper clips to pick up
+                spawnPaperClips(30, 0, 0, 10);
+
+            } else if (taskNum === 2) {
+                t1Controls.style.display = 'none';
+                t2Controls.style.display = 'flex';
+                titleEl.innerText = "Task 2: Electric Induction";
+                descEl.innerText = "Generate electricity! Adjust variables and thrust the electromagnet into the secondary coil to light the bulb.";
+
+                // Wrapper group to scale the entire Task 2 setup down and center it
+                const t2Group = new THREE.Group();
+                t2Group.scale.set(0.65, 0.65, 0.65); // Make it 35% smaller
+                t2Group.position.set(0, -3.0, 0); // Shift lower to perfectly center the setup and bulb
+                scene.add(t2Group);
+                m3_elements.t2Group = t2Group;
+
+                // Fixed Secondary Coil (Made of multiple distinct loops)
+                const secCoilGroup = new THREE.Group();
+                secCoilGroup.position.set(0, 4, 0);
+                
+                const secLoopGeo = new THREE.TorusGeometry(2.8, 0.15, 8, 32);
+                const secLoopMat = new THREE.MeshStandardMaterial({color: 0xb45309, metalness:0.8, roughness:0.4});
+                const instancedSecCoil = new THREE.InstancedMesh(secLoopGeo, secLoopMat, 25);
+                const dummySec = new THREE.Object3D();
+                
+                for(let i=0; i<25; i++) {
+                    dummySec.position.set((i - 12) * 0.12, 0, 0);
+                    dummySec.rotation.set(0, Math.PI/2, 0);
+                    dummySec.updateMatrix();
+                    instancedSecCoil.setMatrixAt(i, dummySec.matrix);
+                }
+                instancedSecCoil.instanceMatrix.needsUpdate = true;
+                secCoilGroup.add(instancedSecCoil);
+                t2Group.add(secCoilGroup); // Add to wrapper
+                m3_elements.secCoil = secCoilGroup;
+
+                // Bulb
+                const bulbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.5, 1), new THREE.MeshStandardMaterial({color:0x444444, metalness:0.9}));
+                bulbBase.position.set(0, 7.5, 0); 
+                t2Group.add(bulbBase); // Add to wrapper
+                
+                const bulbMat = new THREE.MeshStandardMaterial({color: 0xffffff, emissive: 0x000000, transparent:true, opacity:0.9});
+                const bulb = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), bulbMat);
+                bulb.position.set(0, 9.5, 0); 
+                t2Group.add(bulb); // Add to wrapper
+                m3_elements.bulb = bulbMat;
+                
+                const bulbLight = new THREE.PointLight(0xffaa00, 0, 20); 
+                bulbLight.position.set(0, 9.5, 0); 
+                t2Group.add(bulbLight); // Add to wrapper
+                m3_elements.bulbLight = bulbLight;
+
+                // Electromagnet on Rails
+                const emGroup = createCustomElectromagnet(-15, 4, 0, false);
+                // Pre-power it permanently for Task 2 to show its field
+                emGroup.userData.coreMat.emissive.setHex(0xaa2222);
+                t2Group.add(emGroup); // Automatically reparents from scene to t2Group wrapper
+                m3_elements.emGroup = emGroup;
+            }
+
+            m3_updateVars();
+        }
+
+        function m3_togglePower() {
+            if (m3_currentTask !== 1) return;
+            m3_isPowered = !m3_isPowered;
+            const btn = document.getElementById('btn-power-t1');
+            const emGroup = magnets[0]; // Task 1 electromagnet
+            
+            if (m3_isPowered) {
+                btn.innerText = "POWER: ON";
+                btn.className = "w-full py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold text-sm transition-colors shadow shadow-green-500/50 active:scale-95";
+                if (emGroup) emGroup.userData.coreMat.emissive.setHex(0xffaa00); // Glow
+            } else {
+                btn.innerText = "POWER: OFF";
+                btn.className = "w-full py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg font-bold text-sm transition-colors shadow shadow-red-500/50 active:scale-95";
+                if (emGroup) emGroup.userData.coreMat.emissive.setHex(0x000000);
+            }
+        }
+
+        function m3_updateVars() {
+            if(currentAppMode !== 'MODE3') return;
+
+            let coils, batts, speed;
+            let emGroupObj;
+
+            if (m3_currentTask === 1) {
+                coils = parseInt(document.getElementById('sl-coils-t1').value);
+                batts = parseInt(document.getElementById('sl-batteries-t1').value);
+                document.getElementById('lbl-coils-t1').innerText = `${coils} loops`;
+                document.getElementById('lbl-batteries-t1').innerText = `${batts} units`;
+                emGroupObj = magnets[0]; 
+            } else {
+                coils = parseInt(document.getElementById('sl-coils-t2').value);
+                batts = parseInt(document.getElementById('sl-batteries-t2').value);
+                speed = parseInt(document.getElementById('sl-speed-t2').value);
+                document.getElementById('lbl-coils-t2').innerText = `${coils} loops`;
+                document.getElementById('lbl-batteries-t2').innerText = `${batts} units`;
+                document.getElementById('lbl-speed-t2').innerText = `x${speed}`;
+                emGroupObj = m3_elements.emGroup;
+            }
+
+            if(emGroupObj) {
+                if(emGroupObj.userData.priCoil) {
+                    let cg = emGroupObj.userData.priCoil;
+                    
+                    // Clear old loops
+                    while(cg.children.length > 0){ 
+                        let c = cg.children[0];
+                        cg.remove(c);
+                        if(c.geometry) c.geometry.dispose();
+                        if(c.material) c.material.dispose();
+                    }
+                    
+                    // Generate new loops using InstancedMesh for performance
+                    const loopGeo = new THREE.TorusGeometry(0.85, 0.05, 8, 24);
+                    const loopMat = new THREE.MeshStandardMaterial({color: 0xd97706, metalness: 0.6, roughness: 0.4});
+                    const instancedCoil = new THREE.InstancedMesh(loopGeo, loopMat, coils);
+                    const dummy = new THREE.Object3D();
+                    
+                    const coilLength = 6.0;
+                    const spacing = coils > 1 ? coilLength / coils : 0;
+                    const startX = coils > 1 ? (-coilLength / 2 + spacing / 2) : 0;
+                    
+                    for(let i=0; i<coils; i++) {
+                        dummy.position.set(startX + i * spacing, 0, 0);
+                        dummy.rotation.set(0, Math.PI/2, 0); // Face loops along X axis
+                        dummy.updateMatrix();
+                        instancedCoil.setMatrixAt(i, dummy.matrix);
+                    }
+                    
+                    instancedCoil.instanceMatrix.needsUpdate = true;
+                    cg.add(instancedCoil);
+                }
+                if(emGroupObj.userData.batteriesGroup) {
+                    let bg = emGroupObj.userData.batteriesGroup;
+                    
+                    // Remove dynamic battery meshes, keep static circuit wires
+                    const toRemove = bg.children.filter(c => c.userData.isBattery);
+                    toRemove.forEach(c => bg.remove(c));
+                    
+                    // Pre-create geometry and materials for realistic batteries
+                    const battBodyGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.3, 32);
+                    const battBodyMat = new THREE.MeshStandardMaterial({color: 0xe0e0e0, metalness: 0.8, roughness: 0.3}); // Silver
+                    
+                    const posCapGeo = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
+                    const negCapGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 32);
+                    const goldMat = new THREE.MeshStandardMaterial({color: 0xffd700, metalness: 0.9, roughness: 0.2}); // Gold
+                    
+                    // Generate a custom thunder (lightning bolt) shape
+                    const tShape = new THREE.Shape();
+                    tShape.moveTo(0.05, 0.25);
+                    tShape.lineTo(-0.15, 0.0);
+                    tShape.lineTo(-0.02, 0.0);
+                    tShape.lineTo(-0.15, -0.25);
+                    tShape.lineTo(0.15, -0.05);
+                    tShape.lineTo(0.02, -0.05);
+                    tShape.lineTo(0.05, 0.25);
+                    
+                    const tGeo = new THREE.ExtrudeGeometry(tShape, {depth: 0.05, bevelEnabled: false});
+                    tGeo.center(); // Center the geometry anchor
+
+                    for(let i=0; i<batts; i++) {
+                        const bGroup = new THREE.Group();
+                        
+                        // Main silver body
+                        const body = new THREE.Mesh(battBodyGeo, battBodyMat);
+                        bGroup.add(body);
+                        
+                        // Positive gold nub
+                        const posCap = new THREE.Mesh(posCapGeo, goldMat);
+                        posCap.position.y = 0.7; // Exactly at the top
+                        bGroup.add(posCap);
+                        
+                        // Negative gold base
+                        const negCap = new THREE.Mesh(negCapGeo, goldMat);
+                        negCap.position.y = -0.7; // Exactly at the bottom
+                        bGroup.add(negCap);
+                        
+                        // Front Thunder Symbol
+                        const thunder1 = new THREE.Mesh(tGeo, goldMat);
+                        thunder1.position.z = 0.38; // Push outward to surface
+                        bGroup.add(thunder1);
+                        
+                        // Back Thunder Symbol
+                        const thunder2 = new THREE.Mesh(tGeo, goldMat);
+                        thunder2.position.z = -0.38;
+                        thunder2.rotation.y = Math.PI;
+                        bGroup.add(thunder2);
+
+                        bGroup.rotation.z = Math.PI/2;
+                        // Center batteries over the elevated top wire
+                        let offsetStart = -(batts * 1.8) / 2 + 0.9; 
+                        bGroup.position.set(offsetStart + i*1.8, 0.4, 0);
+                        bGroup.userData.isBattery = true;
+                        bg.add(bGroup);
+                    }
+                }
+            }
+        }
+
+        function m3_triggerThrust() {
+            if(currentAppMode !== 'MODE3' || m3_currentTask !== 2 || m3_elements.isThrusting) return;
+            m3_elements.isThrusting = true; m3_elements.thrustPhase = 0; m3_elements.emGroup.position.x = -15;
+        }
+
+        function updateMode3(dt) {
+            if (m3_currentTask === 1) {
+                // Task 1: Magnet attracts scrap based on calculated capacity
+                if (magnets.length > 0) {
+                    let mag = magnets[0];
+                    let nPos = new THREE.Vector3(); mag.northMarker.getWorldPosition(nPos);
+                    let sPos = new THREE.Vector3(); mag.southMarker.getWorldPosition(sPos);
+                    
+                    const coils = parseInt(document.getElementById('sl-coils-t1').value);
+                    const batts = parseInt(document.getElementById('sl-batteries-t1').value);
+                    
+                    // Maximum capacity dictates how many clips can stick at once
+                    let maxCapacity = Math.max(1, Math.floor(coils * (batts / 2.5)));
+                    let pullStrength = m3_isPowered ? (coils * 0.2 + batts * 0.5 + 2.0) : 0;
+
+                    // Sort items by distance to closest pole
+                    let itemsInfo = m1_items.map(item => {
+                        let dN = item.position.distanceTo(nPos), dS = item.position.distanceTo(sPos);
+                        return { item, dN, dS, minD: Math.min(dN, dS) };
+                    });
+                    itemsInfo.sort((a, b) => a.minD - b.minD);
+
+                    let attachedCount = 0;
+
+                    itemsInfo.forEach(info => {
+                        let { item, dN, dS, minD } = info;
+                        let pulled = false;
+
+                        if (item.userData.isMetal && m3_isPowered && minD < pullStrength) {
+                            if (attachedCount < maxCapacity) {
+                                let pullTo = (dN < dS) ? nPos : sPos;
+                                item.position.lerp(pullTo, dt * 8);
+                                pulled = true;
+                                attachedCount++;
+                            }
+                        }
+
+                        if (!pulled && item.position.y > 0.5 && selectedMagnet !== item) {
+                            item.position.y -= dt * 5; 
+                            if (item.position.y < 0.5) item.position.y = 0.5;
+                        }
+                    });
+
+                    const countEl = document.getElementById('m3-attached-count');
+                    if (countEl) countEl.innerText = attachedCount;
+                }
+            } else if (m3_currentTask === 2) {
+                // Task 2: Induction Simulation
+                if(!m3_elements.isThrusting) {
+                    if(m3_elements.bulb.emissiveIntensity > 0) {
+                        m3_elements.bulb.emissiveIntensity = Math.max(0, m3_elements.bulb.emissiveIntensity - dt*2);
+                        m3_elements.bulbLight.intensity = m3_elements.bulb.emissiveIntensity * 2;
+                        document.getElementById('meter-light').style.width = `${Math.min(100, m3_elements.bulb.emissiveIntensity * 20)}%`;
+                    }
+                    return;
+                }
+
+                const speed = parseInt(document.getElementById('sl-speed-t2').value);
+                const coils = parseInt(document.getElementById('sl-coils-t2').value);
+                const batts = parseInt(document.getElementById('sl-batteries-t2').value);
+
+                let moveSpeed = speed * 4;
+
+                if(m3_elements.thrustPhase === 0) {
+                    m3_elements.emGroup.position.x += moveSpeed * dt;
+                    if(m3_elements.emGroup.position.x >= 0) m3_elements.thrustPhase = 1;
+                } else {
+                    m3_elements.emGroup.position.x -= moveSpeed * dt;
+                    if(m3_elements.emGroup.position.x <= -15) m3_elements.isThrusting = false;
+                }
+
+                let proximity = 1 - Math.abs(m3_elements.emGroup.position.x) / 15;
+                // Adjusted EMF formula for the new realistic 1-20 loops range
+                let emf = (coils * batts * speed) / 60;
+                let currentBrightness = emf * Math.pow(proximity, 2) * 5;
+                
+                m3_elements.bulb.emissive.setHex(0xffaa00); m3_elements.bulb.emissiveIntensity = currentBrightness; m3_elements.bulbLight.intensity = currentBrightness * 2;
+                document.getElementById('meter-light').style.width = `${Math.min(100, currentBrightness * 20)}%`;
+            }
+        }
+
+        // --- GLOBAL INTERACTION & RAYCASTING ---
+        function getIntersects(clientX, clientY) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1; mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            let hitboxes = [];
+            if(currentAppMode === 'MODE1' || currentAppMode === 'MODE2' || (currentAppMode === 'MODE3' && m3_currentTask === 1)) {
+                hitboxes = magnets.map(m => m.children.find(c => c.userData.parentGroup)).filter(Boolean);
+            }
+            if(currentAppMode === 'MODE1') hitboxes = hitboxes.concat(m1_items);
+            return raycaster.intersectObjects(hitboxes);
+        }
+
+        function handlePointerDown(e) {
+            if(currentAppMode === 'MENU' || (currentAppMode === 'MODE3' && m3_currentTask === 2)) return;
+            let cX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX, cY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            pointerDownPos.set(cX, cY); let intersects = getIntersects(cX, cY);
+
+            if (intersects.length > 0) {
+                let obj = intersects[0].object;
+                if(obj.userData.parentGroup && !obj.userData.parentGroup.userData.isHanged) {
+                    isDragging = true; selectedMagnet = obj.userData.parentGroup;
+                    raycaster.ray.intersectPlane(dragPlane, offset); offset.sub(selectedMagnet.position);
+                    selectedMagnet.position.y = selectedMagnet.userData.isElectromagnet ? 1.5 : 1.0; 
+                    document.body.style.cursor = 'grabbing';
+                } else if (obj.userData.sortable) {
+                    isDragging = true; selectedMagnet = obj;
+                    raycaster.ray.intersectPlane(dragPlane, offset); offset.sub(selectedMagnet.position);
+                    selectedMagnet.position.y = 1.5; document.body.style.cursor = 'grabbing';
+                }
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging || !selectedMagnet) return;
+            let cX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX, cY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((cX - rect.left) / rect.width) * 2 - 1; mouse.y = -((cY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+
+            let intersectPoint = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(dragPlane, intersectPoint)) {
+                let targetX = intersectPoint.x - offset.x, targetZ = intersectPoint.z - offset.z;
+                if (currentAppMode === 'MODE2') {
+                    if (currentLevel === 2) targetZ = Math.max(2.5, targetZ);
+                    else if (currentLevel >= 3) {
+                        const bounds = 10.5;
+                        if (targetX > -bounds && targetX < bounds && targetZ > -bounds && targetZ < bounds) {
+                            let dL = Math.abs(targetX - (-bounds)), dR = Math.abs(targetX - bounds), dT = Math.abs(targetZ - (-bounds)), dB = Math.abs(targetZ - bounds), min = Math.min(dL, dR, dT, dB);
+                            if (min === dL) targetX = -bounds; else if (min === dR) targetX = bounds; else if (min === dT) targetZ = -bounds; else targetZ = bounds;
+                        }
+                    }
+                }
+                selectedMagnet.position.x = targetX; selectedMagnet.position.z = targetZ;
+            }
+        }
+
+        function handlePointerUp(e) {
+            if (selectedMagnet) {
+                selectedMagnet.position.y = selectedMagnet.userData.isElectromagnet ? 1.3 : 0.5;
+                document.body.style.cursor = 'default';
+
+                let cX = e.changedTouches ? e.changedTouches[0].clientX : e.clientX, cY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+                if (pointerDownPos.distanceTo(new THREE.Vector2(cX, cY)) < 5 && selectedMagnet.userData.isMagnet) {
+                    selectedMagnet.rotation.y += Math.PI / 4;
+                }
+                selectedMagnet = null;
+            }
+            isDragging = false;
+        }
+
+        renderer.domElement.addEventListener('mousedown', handlePointerDown); renderer.domElement.addEventListener('mousemove', handlePointerMove); window.addEventListener('mouseup', handlePointerUp);
+        renderer.domElement.addEventListener('touchstart', handlePointerDown, {passive: false}); renderer.domElement.addEventListener('touchmove', (e)=>{e.preventDefault(); handlePointerMove(e);}, {passive: false}); window.addEventListener('touchend', handlePointerUp);
+        window.addEventListener('resize', () => { if (gameContainer.clientWidth === 0 || gameContainer.clientHeight === 0) return; camera.aspect = gameContainer.clientWidth / gameContainer.clientHeight; camera.updateProjectionMatrix(); renderer.setSize(gameContainer.clientWidth, gameContainer.clientHeight); });
+
+        // --- MAIN LOOP ---
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.1);
+
+            if(currentAppMode === 'MENU') { scene.traverse(obj => { if(obj.userData.autoRotate) obj.rotation.y += dt; }); }
+            else if (currentAppMode === 'MODE1') updateMode1(dt);
+            else if (currentAppMode === 'MODE2') updateMode2(dt);
+            else if (currentAppMode === 'MODE3') updateMode3(dt);
+
+            renderer.render(scene, camera);
+        }
+
+        // Boot
+        initEnvironment(); setGameMode('MENU'); animate();
+    </script>
+</body>
+</html>
