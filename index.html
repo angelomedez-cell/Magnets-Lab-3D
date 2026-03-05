@@ -562,6 +562,37 @@
             }
         }
 
+        // --- GLOBAL UI MODAL ---
+        function showModal(isSuccess, title, desc, callback) {
+            const overlay = document.getElementById('modal-overlay');
+            const titleEl = document.getElementById('modal-title');
+            const descEl = document.getElementById('modal-desc');
+            const iconSvg = document.getElementById('modal-icon-svg');
+            const iconCont = document.getElementById('modal-icon-container');
+            const btnNext = document.getElementById('btn-next');
+
+            titleEl.innerText = title;
+            descEl.innerText = desc;
+            
+            if (isSuccess) {
+                iconCont.className = "w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(34,197,94,0.6)]";
+                iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>';
+                btnNext.innerText = "Continue";
+                btnNext.className = "w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-lg transition-colors shadow-lg";
+            } else {
+                iconCont.className = "w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(239,68,68,0.6)]";
+                iconSvg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path>';
+                btnNext.innerText = "Try Again";
+                btnNext.className = "w-full py-3 bg-red-600 hover:bg-red-500 rounded-xl font-bold text-lg transition-colors shadow-lg";
+            }
+
+            overlay.style.display = 'flex';
+            btnNext.onclick = () => {
+                overlay.style.display = 'none';
+                if (callback) callback();
+            };
+        }
+
         // --- APP STATE MANAGEMENT ---
         function setGameMode(mode) {
             currentAppMode = mode;
@@ -819,6 +850,7 @@
         // ==========================================
         let ironBall, targetZone;
         let ballVelocity = new THREE.Vector3(0,0,0);
+        let currentLevel = 0;
         let magnets = [], compasses = [], obstacles = [], holeMeshes = [], guideArrows = [];
 
         // Truncated list for space, keeping core functionality exact
